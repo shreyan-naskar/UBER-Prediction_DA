@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login – Smart Travel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap");
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        font-family: "Poppins", sans-serif;
+        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)),
+          url("https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1600&q=80")
+            no-repeat center center/cover;
+        color: #fff;
+        overflow: hidden;
+      }
+
+      .card {
+        width: 400px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 24px;
+        padding: 36px 32px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+        animation: fadeIn 0.8s ease-out forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      h2 {
+        margin-bottom: 16px;
+        font-size: 2.2rem;
+        font-weight: 800;
+        text-align: center;
+        background: linear-gradient(90deg, #60a5fa, #2563eb);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 28px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 4px;
+      }
+
+      .tab {
+        flex: 1;
+        padding: 10px 0;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+        text-align: center;
+        transition: 0.3s;
+        color: #d1d5db;
+      }
+
+      .tab.active {
+        background: linear-gradient(135deg, #60a5fa, #2563eb);
+        color: #fff;
+        transform: scale(1.05);
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+      }
+
+      form {
+        text-align: left;
+        animation: slideIn 0.5s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin-top: 14px;
+        margin-bottom: 5px;
+        color: #f3f4f6;
+      }
+
+      .input-group {
+        position: relative;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px;
+        padding-right: 42px;
+        border: 1.8px solid rgba(255, 255, 255, 0.4);
+        border-radius: 14px;
+        font-size: 1rem;
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        outline: none;
+        transition: 0.2s;
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      input:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35);
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .toggle-pass {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        font-size: 1.1rem;
+        color: #dbeafe;
+      }
+
+      button {
+        width: 100%;
+        padding: 14px;
+        margin-top: 24px;
+        background: linear-gradient(135deg, #60a5fa, #2563eb);
+        color: #fff;
+        font-size: 1.1rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: 0.25s;
+        letter-spacing: 0.5px;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(37, 99, 235, 0.6);
+      }
+
+      .msg {
+        margin-top: 18px;
+        font-size: 0.95rem;
+        text-align: center;
+      }
+      .error {
+        color: #f87171;
+      }
+      .success {
+        color: #4ade80;
+      }
+
+      small {
+        display: block;
+        margin-top: 14px;
+        color: #e5e7eb;
+        font-size: 0.9rem;
+        text-align: center;
+      }
+
+      a {
+        color: #93c5fd;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 480px) {
+        .card {
+          width: 90%;
+          padding: 24px;
+        }
+        h2 {
+          font-size: 1.8rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>🚗 Smart Travel</h2>
+
+      <div class="tabs">
+        <div
+          id="loginTab"
+          class="tab {{ '' if tab=='signup' else 'active' }}"
+          onclick="show('login')"
+        >
+          Log In
+        </div>
+        <div
+          id="signupTab"
+          class="tab {{ 'active' if tab=='signup' else '' }}"
+          onclick="show('signup')"
+        >
+          Sign Up
+        </div>
+      </div>
+
+      {% if error %}
+      <div class="msg error">{{ error }}</div>
+      {% endif %} {% if success %}
+      <div class="msg success">{{ success }}</div>
+      {% endif %}
+
+      <!-- LOGIN FORM -->
+      <div
+        id="login"
+        style="display: {{ 'none' if tab=='signup' else 'block' }}"
+      >
+        <form method="POST" action="/login">
+          <label>Username</label>
+          <input
+            type="text"
+            name="username"
+            placeholder="Enter username"
+            required
+          />
+          <label>Password</label>
+          <div class="input-group">
+            <input
+              type="password"
+              name="password"
+              id="loginPass"
+              placeholder="Enter password"
+              required
+            />
+            <span class="toggle-pass" onclick="togglePass('loginPass')"
+              >👁️</span
+            >
+          </div>
+          <button type="submit">Log In</button>
+        </form>
+        <small
+          >Don't have an account?
+          <a href="#" onclick="show('signup')">Sign up here</a></small
+        >
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div
+        id="signup"
+        style="display: {{ 'block' if tab=='signup' else 'none' }}"
+      >
+        <form method="POST" action="/signup" onsubmit="return validateSignup()">
+          <label>Username</label>
+          <input
+            type="text"
+            name="username"
+            placeholder="Choose a username"
+            minlength="3"
+            required
+          />
+          <label>Password</label>
+          <div class="input-group">
+            <input
+              type="password"
+              id="pass"
+              name="password"
+              placeholder="Enter password"
+              minlength="6"
+              required
+            />
+            <span class="toggle-pass" onclick="togglePass('pass')">👁️</span>
+          </div>
+          <label>Confirm Password</label>
+          <div class="input-group">
+            <input
+              type="password"
+              id="confirm"
+              name="confirm"
+              placeholder="Confirm password"
+              minlength="6"
+              required
+            />
+            <span class="toggle-pass" onclick="togglePass('confirm')">👁️</span>
+          </div>
+          <button type="submit">Create Account</button>
+        </form>
+        <small
+          >Already have an account?
+          <a href="#" onclick="show('login')">Log in here</a></small
+        >
+      </div>
+    </div>
+
+    <script>
+      function show(which) {
+        document.getElementById("login").style.display =
+          which === "login" ? "block" : "none";
+        document.getElementById("signup").style.display =
+          which === "signup" ? "block" : "none";
+
+        document
+          .getElementById("loginTab")
+          .classList.toggle("active", which === "login");
+        document
+          .getElementById("signupTab")
+          .classList.toggle("active", which === "signup");
+      }
+
+      function validateSignup() {
+        const p1 = document.getElementById("pass").value;
+        const p2 = document.getElementById("confirm").value;
+        if (p1 !== p2) {
+          alert("Passwords do not match. Please try again.");
+          return false;
+        }
+        return true;
+      }
+
+      function togglePass(id) {
+        const input = document.getElementById(id);
+        input.type = input.type === "password" ? "text" : "password";
+      }
+    </script>
+  </body>
+</html>

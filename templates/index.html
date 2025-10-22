@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Travel Planner</title>
+    <style>
+      :root {
+        --bg: #f6f9ff;
+        --card: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --primary: #111111;
+        --accent: #2563eb;
+        --ring: rgba(37, 99, 235, 0.18);
+        --glass: rgba(255, 255, 255, 0.6);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        display: flex;
+        background: var(--bg);
+        font-family: Inter, Segoe UI, system-ui, Arial;
+        color: var(--ink);
+      }
+      .app {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        transition: filter 0.3s ease;
+      }
+      .app.blurred .sidebar,
+      .app.blurred .map-wrap > :not(.overlay-center) {
+        filter: blur(6px) saturate(0.9);
+      }
+      .sidebar {
+        width: 36%;
+        background: var(--card);
+        padding: 24px 22px;
+        box-shadow: 4px 0 18px rgba(2, 6, 23, 0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .map-wrap {
+        width: 64%;
+        position: relative;
+      }
+      #mapCanvas {
+        position: absolute;
+        inset: 0;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hello {
+        font-weight: 800;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .btn {
+        padding: 0.7rem 0.9rem;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        background: #e5e7eb;
+        color: #111827;
+      }
+      .btn.primary {
+        background: #111111;
+        color: #fff;
+      }
+      .btn.primary:hover {
+        filter: brightness(1.05);
+      }
+      .btn.ghost {
+        background: transparent;
+        border: 2px dashed #cbd5e1;
+      }
+      h1 {
+        margin: 8px 0 6px;
+        font-size: 1.6rem;
+        color: #1e3a8a;
+      }
+      label {
+        display: block;
+        margin-top: 8px;
+        font-weight: 700;
+        color: #334155;
+      }
+      input {
+        width: 100%;
+        padding: 0.85rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 1rem;
+        outline: none;
+        transition: 0.2s;
+        background: #fff;
+      }
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--ring);
+      }
+      .subtle {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 4px;
+      }
+      .autocomplete {
+        position: relative;
+      }
+      .suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-top: none;
+        border-radius: 0 0 12px 12px;
+        z-index: 10;
+        max-height: 220px;
+        overflow: auto;
+      }
+      .suggestions div {
+        padding: 0.7rem;
+        cursor: pointer;
+      }
+      .suggestions div:hover {
+        background: #eff6ff;
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .veh-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .veh {
+        border: 2px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        cursor: pointer;
+        background: #fff;
+        transition: 0.2s;
+      }
+      .veh:hover {
+        border-color: #c7d2fe;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+      }
+      .veh.selected {
+        border-color: #111;
+        background: #f4f4f5;
+      }
+      .veh .title {
+        font-weight: 800;
+      }
+      .veh .sub {
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .veh svg {
+        width: 40px;
+        height: 40px;
+      }
+      #status {
+        min-height: 30px;
+        margin-top: 6px;
+      }
+      .loading {
+        animation: pulse 1.4s infinite;
+        color: #475569;
+      }
+      @keyframes pulse {
+        0% {
+          opacity: 0.55;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.55;
+        }
+      }
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+      .modal {
+        background: #fff;
+        width: min(760px, 94vw);
+        max-height: 80vh;
+        overflow: auto;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+        padding: 1rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #e5e7eb;
+        padding: 0.55rem;
+        text-align: center;
+        font-size: 0.9rem;
+      }
+      tr:hover {
+        background: #f8fafc;
+      }
+      .overlay-center {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 120;
+        background: rgba(15, 23, 42, 0.25);
+        transition: background 0.3s ease;
+      }
+      .center-card {
+        background: linear-gradient(
+          135deg,
+          #ffffff 0%,
+          #f9fafb 60%,
+          #eef2ff 100%
+        );
+        border-radius: 22px;
+        box-shadow: 0 18px 48px rgba(2, 6, 23, 0.25);
+        width: min(460px, 92vw);
+        max-width: 960px;
+        transition: width 0.6s ease, height 0.6s ease, transform 0.4s ease,
+          opacity 0.35s ease;
+        overflow: hidden;
+        transform: translateY(8px) scale(0.98);
+        opacity: 0;
+        border: 1px solid rgba(2, 6, 23, 0.06);
+      }
+      .center-card.show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      .center-card.expanded {
+        width: min(900px, 96vw);
+        height: 86vh;
+        overflow-y: auto;
+      }
+      .center-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: linear-gradient(
+          90deg,
+          rgba(37, 99, 235, 0.12),
+          rgba(99, 102, 241, 0.1) 60%,
+          transparent
+        );
+        border-bottom: 1px solid rgba(2, 6, 23, 0.06);
+      }
+      .center-title {
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .close-btn {
+        font-size: 1.2rem;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 6px 10px;
+        cursor: pointer;
+        box-shadow: 0 2px 10px rgba(2, 6, 23, 0.06);
+      }
+      .close-btn:hover {
+        filter: brightness(0.98);
+      }
+      .center-body {
+        padding: 18px 16px;
+        text-align: center;
+        color: #0f172a;
+      }
+      .loading-text {
+        font-size: 1.1rem;
+        font-weight: 800;
+        animation: fadeBlink 1.5s infinite;
+      }
+      @keyframes fadeBlink {
+        0%,
+        100% {
+          opacity: 0.45;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .result-wrap {
+        display: none;
+        opacity: 0;
+        transition: opacity 0.6s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .result-map {
+        flex: 1;
+        min-height: 320px;
+      }
+      #previewMap {
+        width: 100%;
+        height: 100%;
+      }
+      .stats {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        padding: 14px;
+        margin-top: -100px;
+      }
+      .stat {
+        background: #fff;
+        border-radius: 16px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+      }
+      .stat .label {
+        color: #64748b;
+        margin-bottom: 6px;
+      }
+      .stat .big {
+        font-weight: 900;
+        font-size: 1.8rem;
+      }
+      #weatherStatus {
+        text-align: center;
+        margin: 16px 0 8px;
+        font-weight: 700;
+        color: #1e3a8a;
+      }
+      .result-map {
+  min-height: 220px; /* ↓ reduced from 320px */
+  max-height: 550px;
+}
+#previewMap {
+  width: 100%;
+  height: 80%;
+  border-radius: 14px;
+}
+
+      .center-card.expanded {
+  width: min(900px, 96vw);
+  height: 95vh;         /* slightly shorter */
+    /* disable scrolling */
+}
+    </style>
+  </head>
+  <body>
+    <div class="app" id="appRoot">
+      <div class="sidebar">
+        <div class="topbar">
+          <div class="hello" id="helloUser">Hi 👋</div>
+          <div class="actions">
+            <button class="btn" id="btnHistory">History</button>
+            <a
+              class="btn"
+              href="/logout"
+              style="background: #fee2e2; color: #991b1b"
+              >Logout</a
+            >
+          </div>
+        </div>
+
+        <h1>🚗 Smart Travel Planner</h1>
+
+        <label>Pickup</label>
+        <div class="autocomplete">
+          <input id="source" placeholder="Choose pickup" autocomplete="off" />
+          <div class="suggestions" id="srcSug"></div>
+        </div>
+        <div class="subtle" id="pickupStatus">
+          Pick a location from the list.
+        </div>
+
+        <label style="margin-top: 10px">Destination</label>
+        <div class="autocomplete">
+          <input
+            id="destination"
+            placeholder="Choose destination"
+            autocomplete="off"
+          />
+          <div class="suggestions" id="dstSug"></div>
+        </div>
+        <div class="subtle" id="destStatus">
+          Select a destination to draw the route.
+        </div>
+
+        <div class="grid2" style="margin-top: 10px">
+          <div>
+            <label for="date">Date</label>
+            <input type="date" id="date" />
+          </div>
+          <div>
+            <label for="time">Time</label>
+            <input type="time" id="time" />
+          </div>
+        </div>
+
+        <label style="margin-top: 10px">Choose your ride</label>
+        <div class="veh-grid" id="vehRow"></div>
+
+        <button
+          class="btn primary"
+          id="predict"
+          style="margin-top: 10px"
+          disabled
+        >
+          Show Route & Predict
+        </button>
+
+        <div id="status"></div>
+
+        <div class="modal-bg" id="modalBg" aria-hidden="true">
+          <div class="modal">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+              "
+            >
+              <h3>📜 Your Previous Searches</h3>
+              <button class="btn" onclick="toggleModal(false)">Close</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Source</th>
+                  <th>Destination</th>
+                  <th>Vehicle</th>
+                  <th>Price</th>
+                  <th>Time</th>
+                  <th>Use</th>
+                </tr>
+              </thead>
+              <tbody id="histBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <div id="mapCanvas"></div>
+
+        <div class="overlay-center" id="overlayCard">
+          <div class="center-card" id="centerCard">
+            <div class="center-header">
+              <div class="center-title">🧭 Trip Preview</div>
+              <button class="close-btn" id="closeOverlay" title="Close">
+                ✖
+              </button>
+            </div>
+            <div class="center-body" id="loadingBody">
+              <div class="loading-text" id="loadingText">
+                🚗 Finding best route…
+              </div>
+            </div>
+            <div class="result-wrap" id="resultWrap">
+              <div class="result-map"><div id="previewMap"></div></div>
+              <div class="stats">
+                <div class="stat">
+                  <div class="label">Estimated Price</div>
+                  <div class="big" id="predPrice">—</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Travel Time</div>
+                  <div class="big" id="predTime">—</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Distance</div>
+                  <div class="big" id="predDist">—</div>
+                </div>
+                <div class="stat">
+                  <div class="label">Vehicle</div>
+                  <div class="big" id="predVehicle">—</div>
+                </div>
+              </div>
+              <div
+                id="weatherStatus"
+                style="
+                  text-align: center;
+                  margin: 10px 0;
+                  font-weight: 700;
+                  color: #1e3a8a;
+                  font-size: 1.3rem;
+                "
+              >
+                Checking weather…
+              </div>
+              <div
+                id="cancelStatus"
+                style="
+                  text-align: center;
+                  margin: 10px 0;
+                  font-weight: 700;
+                  color: #1e3a8a;
+                  font-size: 1.3rem;
+                "
+              >
+                <h2>Checking cancellation risk…</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script>
+      // ---------- Auth guard ----------
+      fetch("/whoami")
+        .then((r) => r.json())
+        .then((u) => {
+          if (!u.logged_in) {
+            window.location = "/login";
+            return;
+          }
+          document.getElementById(
+            "helloUser"
+          ).textContent = `Hi, ${u.username} 👋`;
+        });
+
+      const appRoot = document.getElementById("appRoot");
+      const sourceEl = document.getElementById("source");
+      const destEl = document.getElementById("destination");
+      const dateEl = document.getElementById("date");
+      const timeEl = document.getElementById("time");
+      const statusDiv = document.getElementById("status");
+      const pickupStatus = document.getElementById("pickupStatus");
+      const destStatus = document.getElementById("destStatus");
+
+      (function () {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        dateEl.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+          now.getDate()
+        )}`;
+        timeEl.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      })();
+
+      const pickupPoints = [
+        "Connaught Place",
+        "New Delhi Railway Station",
+        "Dwarka",
+        "Noida Sector 18",
+        "Gurgaon Cyber City",
+        "Saket",
+        "Lajpat Nagar",
+        "IGI Airport",
+        "Rohini",
+        "Janakpuri",
+        "Vasant Kunj",
+        "Greater Noida",
+        "Kalkaji",
+        "Chandni Chowk",
+        "Nehru Place",
+        "Faridabad",
+        "Hauz Khas",
+        "Pitampura",
+        "Rajouri Garden",
+        "Karol Bagh",
+      ];
+      const dropPoints = [
+        "Noida Sector 62",
+        "Gurgaon MG Road",
+        "IGI Airport",
+        "Connaught Place",
+        "Saket",
+        "Lajpat Nagar",
+        "Hauz Khas",
+        "Greater Noida",
+        "Dwarka Mor",
+        "Rohini",
+        "Faridabad",
+        "Vasant Kunj",
+        "Cyber Hub Gurgaon",
+        "Okhla",
+        "Preet Vihar",
+        "Malviya Nagar",
+        "Nehru Place",
+        "Kalkaji",
+        "Ashok Vihar",
+        "Karol Bagh",
+      ];
+
+      function setupAutocomplete(inputId, sugId, data, onSelect) {
+        const input = document.getElementById(inputId);
+        const sug = document.getElementById(sugId);
+
+        input.addEventListener("focus", () => {
+          renderList("");
+        });
+        input.addEventListener("input", () => {
+          renderList(input.value.toLowerCase());
+        });
+
+        function renderList(q) {
+          sug.innerHTML = "";
+          data
+            .filter((x) => x.toLowerCase().includes(q))
+            .slice(0, 12)
+            .forEach((v) => {
+              const d = document.createElement("div");
+              d.textContent = v;
+              d.onclick = () => {
+                input.value = v;
+                sug.innerHTML = "";
+                onSelect(v);
+              };
+              sug.appendChild(d);
+            });
+        }
+
+        input.addEventListener("blur", () => {
+          setTimeout(() => {
+            const ok = data.some(
+              (x) => x.toLowerCase() === input.value.trim().toLowerCase()
+            );
+            if (!ok) input.value = "";
+            sug.innerHTML = "";
+          }, 150);
+        });
+
+        document.addEventListener("click", (e) => {
+          if (e.target !== input) sug.innerHTML = "";
+        });
+      }
+
+      const vehicles = [
+        {
+          key: "Bike",
+          title: "Bike",
+          sub: "1 person • light",
+          mult: 0.6,
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M5 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm14 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="#111" stroke-width="1.5"/><path d="M6 15l5-7h3l4 7" stroke="#111" stroke-width="1.5"/></svg>`,
+        },
+        {
+          key: "Auto",
+          title: "Auto",
+          sub: "2–3 persons",
+          mult: 0.9,
+          svg: `<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="9" width="14" height="6" rx="2" stroke="#111" stroke-width="1.5"/><path d="M17 12h3l1 3h-4v-3Z" stroke="#111" stroke-width="1.5"/><circle cx="7" cy="17" r="2" stroke="#111" stroke-width="1.5"/><circle cx="17" cy="17" r="2" stroke="#111" stroke-width="1.5"/></svg>`,
+        },
+        {
+          key: "Sedan",
+          title: "Sedan",
+          sub: "4 persons • AC",
+          mult: 1.0,
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M3 14h15l-2-3-6-2H7l-4 5Z" stroke="#111" stroke-width="1.5"/><circle cx="7" cy="17" r="2" stroke="#111" stroke-width="1.5"/><circle cx="16" cy="17" r="2" stroke="#111" stroke-width="1.5"/></svg>`,
+        },
+        {
+          key: "SUV",
+          title: "SUV",
+          sub: "6–7 persons",
+          mult: 1.3,
+          svg: `<svg viewBox="0 0 24 24" fill="none"><path d="M2.5 14h17l1.5-3-2-2H9L6 8 2.5 14Z" stroke="#111" stroke-width="1.5"/><circle cx="7" cy="17" r="2" stroke="#111" stroke-width="1.5"/><circle cx="18" cy="17" r="2" stroke="#111" stroke-width="1.5"/></svg>`,
+        },
+      ];
+      let selectedVehicle = vehicles[2];
+      const vehRow = document.getElementById("vehRow");
+      vehicles.forEach((v, i) => {
+        const el = document.createElement("div");
+        el.className = "veh" + (i === 2 ? " selected" : "");
+        el.innerHTML = `${v.svg}<div><div class="title">${v.title}</div><div class="sub">${v.sub}</div></div>`;
+        el.onclick = () => {
+          selectedVehicle = v;
+          [...vehRow.children].forEach((c) => c.classList.remove("selected"));
+          el.classList.add("selected");
+        };
+        vehRow.appendChild(el);
+      });
+
+      const modalBg = document.getElementById("modalBg");
+      function toggleModal(show) {
+        modalBg.style.display = show ? "flex" : "none";
+      }
+      document.getElementById("btnHistory").onclick = async () => {
+        const res = await fetch("/history");
+        if (res.status === 401) {
+          window.location = "/login";
+          return;
+        }
+        const data = await res.json();
+        const tb = document.getElementById("histBody");
+        tb.innerHTML = data.length
+          ? data
+              .map(
+                (h) => `
+      <tr>
+        <td>${h.timestamp}</td>
+        <td>${h.source}</td>
+        <td>${h.destination}</td>
+        <td>${h.vehicle_type || "-"}</td>
+        <td>${h.predicted_price}</td>
+        <td>${h.predicted_time}</td>
+        <td><button class="btn" onclick="useHistory('${esc(h.source)}','${esc(
+                  h.destination
+                )}','${esc(h.date || "")}','${esc(h.time || "")}','${esc(
+                  h.vehicle_type || ""
+                )}')">Use</button></td>
+      </tr>`
+              )
+              .join("")
+          : `<tr><td colspan="7">No history yet.</td></tr>`;
+        toggleModal(true);
+      };
+      function esc(s) {
+        return (s || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+      window.useHistory = (src, dst, date, time, veh) => {
+        sourceEl.value = src;
+        destEl.value = dst;
+        if (date) dateEl.value = date;
+        if (time) timeEl.value = time;
+        if (veh) {
+          const idx = vehicles.findIndex(
+            (v) => v.key.toLowerCase() === veh.toLowerCase()
+          );
+          if (idx >= 0) {
+            selectedVehicle = vehicles[idx];
+            [...vehRow.children].forEach((c, i) =>
+              c.classList.toggle("selected", i === idx)
+            );
+          }
+        }
+        if (src) onPickupSelected(src);
+        if (dst) onDestSelected(dst);
+        toggleModal(false);
+      };
+      modalBg.addEventListener("click", (e) => {
+        if (e.target === modalBg) toggleModal(false);
+      });
+
+      let map,
+        dirService,
+        dirRenderer,
+        geocoder,
+        pickupMarker,
+        dropMarker,
+        polyBlinkTimer = null;
+      let pickupLatLng = null,
+        dropLatLng = null;
+
+      let previewMap, previewRenderer;
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("mapCanvas"), {
+          center: { lat: 28.6139, lng: 77.209 },
+          zoom: 11,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+        });
+        dirService = new google.maps.DirectionsService();
+        dirRenderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: true,
+          polylineOptions: {
+            strokeColor: "#111111",
+            strokeWeight: 6,
+            strokeOpacity: 1,
+          },
+        });
+        geocoder = new google.maps.Geocoder();
+
+        setupAutocomplete("source", "srcSug", pickupPoints, onPickupSelected);
+        setupAutocomplete("destination", "dstSug", dropPoints, onDestSelected);
+      }
+      window.initMap = initMap;
+
+      function placeMarker(latlng, labelText, color = "#111111") {
+        return new google.maps.Marker({
+          position: latlng,
+          map,
+          label: { text: labelText, color: "#fff", fontWeight: "700" },
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            fillColor: color,
+            fillOpacity: 1,
+            strokeColor: "#ffffff",
+            strokeWeight: 2,
+            scale: 8,
+          },
+        });
+      }
+
+      function addPulseDot(latlng) {
+        const proj = map.getProjection();
+        if (!proj) {
+          google.maps.event.addListenerOnce(map, "idle", () =>
+            addPulseDot(latlng)
+          );
+          return;
+        }
+        const host = document.querySelector(".map-wrap");
+        const dot = document.createElement("div");
+        dot.className = "pulse-dot";
+        host.appendChild(dot);
+
+        function position() {
+          const scale = Math.pow(2, map.getZoom());
+          const bounds = map.getBounds();
+          if (!bounds) return;
+          const nw = new google.maps.LatLng(
+            bounds.getNorthEast().lat(),
+            bounds.getSouthWest().lng()
+          );
+          const worldNW = proj.fromLatLngToPoint(nw);
+          const world = proj.fromLatLngToPoint(latlng);
+          const px = (world.x - worldNW.x) * scale;
+          const py = (world.y - worldNW.y) * scale;
+          dot.style.left = px - 7 + "px";
+          dot.style.top = py - 7 + "px";
+        }
+        position();
+        const move = google.maps.event.addListener(
+          map,
+          "bounds_changed",
+          position
+        );
+        setTimeout(() => {
+          dot.remove();
+          google.maps.event.removeListener(move);
+        }, 3800);
+      }
+
+      function onPickupSelected(name) {
+        geocoder.geocode(
+          { address: name, componentRestrictions: { country: "IN" } },
+          (res, status) => {
+            if (status !== "OK" || !res.length) {
+              alert("Could not locate pickup.");
+              return;
+            }
+            pickupLatLng = res[0].geometry.location;
+            if (pickupMarker) pickupMarker.setMap(null);
+            pickupMarker = placeMarker(pickupLatLng, "P");
+
+            map.panTo(pickupLatLng);
+            gsap.to(
+              { z: map.getZoom() },
+              {
+                z: 15,
+                duration: 0.6,
+                onUpdate: function () {
+                  map.setZoom(this.targets()[0].z);
+                },
+              }
+            );
+            addPulseDot(pickupLatLng);
+            pickupStatus.textContent = "Pickup selected ✅";
+
+            if (dropLatLng) {
+              drawRoute(pickupLatLng, dropLatLng);
+            }
+          }
+        );
+      }
+
+      function onDestSelected(name) {
+        geocoder.geocode(
+          { address: name, componentRestrictions: { country: "IN" } },
+          (res, status) => {
+            if (status !== "OK" || !res.length) {
+              alert("Could not locate destination.");
+              return;
+            }
+            dropLatLng = res[0].geometry.location;
+            if (dropMarker) dropMarker.setMap(null);
+            dropMarker = placeMarker(dropLatLng, "D", "#111");
+            destStatus.textContent = "Destination selected ✅";
+
+            if (pickupLatLng) {
+              drawRoute(pickupLatLng, dropLatLng);
+              document.getElementById("predict").disabled = false;
+            }
+          }
+        );
+      }
+
+      function drawRoute(origin, dest) {
+        dirService.route(
+          {
+            origin: origin,
+            destination: dest,
+            travelMode: google.maps.TravelMode.DRIVING,
+          },
+          (res, status) => {
+            if (status !== "OK" || !res.routes.length) {
+              alert("Could not draw route.");
+              return;
+            }
+            dirRenderer.setDirections(res);
+            map.fitBounds(res.routes[0].bounds);
+            startPolylineBlink();
+          }
+        );
+      }
+
+      function startPolylineBlink() {
+        stopPolylineBlink();
+        let on = true;
+        polyBlinkTimer = setInterval(() => {
+          dirRenderer.setOptions({
+            polylineOptions: {
+              strokeColor: "#111111",
+              strokeWeight: 6,
+              strokeOpacity: on ? 1 : 0.35,
+            },
+          });
+          on = !on;
+        }, 450);
+      }
+      function stopPolylineBlink() {
+        if (polyBlinkTimer) {
+          clearInterval(polyBlinkTimer);
+          polyBlinkTimer = null;
+        }
+      }
+
+      async function routeMetrics(origin, dest) {
+        return new Promise((resolve) => {
+          dirService.route(
+            {
+              origin: origin,
+              destination: dest,
+              travelMode: google.maps.TravelMode.DRIVING,
+            },
+            (res, status) => {
+              if (status !== "OK" || !res.routes.length) {
+                resolve({ ok: false });
+                return;
+              }
+              const leg = res.routes[0].legs[0];
+              resolve({
+                ok: true,
+                res,
+                distanceKm: Math.round((leg.distance.value / 1000) * 10) / 10,
+                durationMin: Math.round(leg.duration.value / 60),
+              });
+            }
+          );
+        });
+      }
+
+      // ---------- Weather API Integration ----------
+      // ✅ Corrected Weather API function
+      async function fetchWeatherStatus(lat, lng, date, time) {
+        const wDiv = document.getElementById("weatherStatus");
+        try {
+          // Parse date & time from form
+          const local = new Date(`${date}T${time}:00`);
+          const isoDate = local.toISOString().split("T")[0];
+          const hour = local.getUTCHours();
+
+          // Free weather API
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=precipitation_probability,rain&timezone=auto&start_date=${isoDate}&end_date=${isoDate}`;
+
+          const res = await fetch(url);
+          if (!res.ok) throw new Error("Weather API error");
+          const data = await res.json();
+
+          if (!data.hourly || !data.hourly.time) {
+            wDiv.textContent = "☁️ Weather data unavailable";
+            wDiv.style.color = "#6b7280";
+            return;
+          }
+
+          // Find closest forecast hour
+          const times = data.hourly.time;
+          let idx = 0;
+          let minDiff = Infinity;
+          const selected = new Date(`${date}T${time}:00`);
+          times.forEach((t, i) => {
+            const diff = Math.abs(new Date(t) - selected);
+            if (diff < minDiff) {
+              minDiff = diff;
+              idx = i;
+            }
+          });
+
+          const rainProb = data.hourly.precipitation_probability?.[idx] || 0;
+          const rainMm = data.hourly.rain?.[idx] || 0;
+
+          if (rainProb > 50 || rainMm > 0.2) {
+            wDiv.textContent = `🌧️ ${rainProb}% chance of rain — Prices may increase`;
+            wDiv.style.color = "#b91c1c";
+          } else {
+            wDiv.textContent =
+              "☀️ Weather looks fine-Prices seems to be normal";
+            wDiv.style.color = "#15803d";
+          }
+        } catch (err) {
+          console.error(err);
+          wDiv.textContent = "☁️ Weather data unavailable";
+          wDiv.style.color = "#6b7280";
+        }
+      }
+
+      document.getElementById("predict").addEventListener("click", async () => {
+        if (!pickupLatLng || !dropLatLng) {
+          alert("Select pickup and destination first.");
+          return;
+        }
+
+        statusDiv.innerHTML = `<div class="loading">🔄 Fetching distance & ETA…</div>`;
+
+        const stopRotate = showSmallBuffer();
+
+        const m = await routeMetrics(pickupLatLng, dropLatLng);
+        if (!m.ok) {
+          stopRotate();
+          statusDiv.innerHTML = "";
+          alert("Could not compute route metrics.");
+          return;
+        }
+
+        await new Promise((r) => setTimeout(r, 700));
+        stopPolylineBlink();
+
+        const distanceKm = m.distanceKm;
+        const mins = m.durationMin;
+        const baseFare = 45 + distanceKm * 12;
+        const surge = 1.0;
+        const fare = Math.round(baseFare * (selectedVehicle.mult || 1) * surge);
+
+        expandToResults();
+        setTimeout(async () => {
+          loadingBody.style.display = "none";
+          resultWrap.style.display = "flex";
+          requestAnimationFrame(() => (resultWrap.style.opacity = "1"));
+
+          renderPreviewMap(m.res);
+
+          document.getElementById("predPrice").textContent = `₹${fare}`;
+          document.getElementById("predTime").textContent = `${mins} mins`;
+          document.getElementById("predDist").textContent = `${distanceKm} km`;
+          document.getElementById("predVehicle").textContent =
+            selectedVehicle.title;
+
+          const cards = document.querySelectorAll(".stats .stat");
+          gsap.from(cards, {
+            opacity: 0,
+            y: 14,
+            duration: 0.55,
+            ease: "power2.out",
+            stagger: 0.12,
+          });
+
+          statusDiv.innerHTML = "";
+
+          // call weather check
+          await fetchWeatherStatus(
+            pickupLatLng.lat(),
+            pickupLatLng.lng(),
+            dateEl.value,
+            timeEl.value
+          );
+        }, 650);
+        // ---- Driver Cancellation Prediction ----
+        const cancelDiv = document.getElementById("cancelStatus");
+        cancelDiv.textContent = "🔄 Checking cancellation probability…";
+        cancelDiv.style.color = "#334155";
+
+        try {
+          const resp = await fetch("/predict_cancellation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pickup: sourceEl.value.trim(),
+              drop: destEl.value.trim(),
+              date: dateEl.value,
+              time: timeEl.value,
+              car_type: selectedVehicle.key,
+            }),
+          });
+          const pred = await resp.json();
+
+          if (pred.ok) {
+            if (pred.cancel_pred === 1) {
+              cancelDiv.textContent = `⚠️ High Cancellation Risk (${pred.probability}% chance)`;
+              cancelDiv.style.color = "#b91c1c";
+            } else {
+              cancelDiv.textContent = `✅ Low Cancellation Risk (${
+                100 - pred.probability
+              }% chance of success)`;
+              cancelDiv.style.color = "#15803d";
+            }
+          } else {
+            cancelDiv.textContent = "⚠️ Could not predict cancellation.";
+            cancelDiv.style.color = "#6b7280";
+          }
+        } catch (err) {
+          console.error(err);
+          cancelDiv.textContent = "⚠️ Prediction unavailable.";
+          cancelDiv.style.color = "#6b7280";
+        }
+
+        const source = sourceEl.value.trim();
+        const destination = destEl.value.trim();
+        const date = dateEl.value,
+          time = timeEl.value;
+        const res = await fetch("/save_search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source,
+            destination,
+            date,
+            time,
+            vehicle_type: selectedVehicle.key,
+            predicted_price: `₹${fare}`,
+            predicted_time: `${mins} mins`,
+          }),
+        });
+        if (res.status === 401) {
+          window.location = "/login";
+        }
+
+        stopRotate();
+      });
+
+      document.getElementById("closeOverlay").addEventListener("click", () => {
+        const overlayCard = document.getElementById("overlayCard");
+        overlayCard.style.display = "none";
+        appRoot.classList.remove("blurred");
+      });
+
+      // helper functions
+      function showSmallBuffer() {
+        const overlayCard = document.getElementById("overlayCard");
+        overlayCard.style.display = "flex";
+        appRoot.classList.add("blurred");
+        const centerCard = document.getElementById("centerCard");
+        centerCard.classList.remove("expanded");
+        requestAnimationFrame(() => centerCard.classList.add("show"));
+
+        document.getElementById("loadingBody").style.display = "block";
+        document.getElementById("resultWrap").style.display = "none";
+        document.getElementById("resultWrap").style.opacity = "0";
+
+        const msgs = [
+          "🚗 Finding best route…",
+          "📍 Calculating distance…",
+          "💰 Estimating fare…",
+        ];
+        let i = 0;
+        const lbl = document.getElementById("loadingText");
+        const timer = setInterval(() => {
+          if (lbl) lbl.textContent = msgs[i++ % msgs.length];
+        }, 1000);
+        return () => clearInterval(timer);
+      }
+
+      function expandToResults() {
+        const centerCard = document.getElementById("centerCard");
+        centerCard.classList.add("expanded");
+      }
+
+      function renderPreviewMap(directions) {
+        if (!previewMap) {
+          previewMap = new google.maps.Map(
+            document.getElementById("previewMap"),
+            {
+              center: { lat: 28.6139, lng: 77.209 },
+              zoom: 12,
+              mapTypeControl: false,
+              streetViewControl: false,
+              fullscreenControl: false,
+            }
+          );
+          previewRenderer = new google.maps.DirectionsRenderer({
+            map: previewMap,
+            suppressMarkers: true,
+            polylineOptions: {
+              strokeColor: "#111111",
+              strokeWeight: 6,
+              strokeOpacity: 1,
+            },
+          });
+        }
+        previewRenderer.setDirections(directions);
+        previewMap.fitBounds(directions.routes[0].bounds);
+      }
+    </script>
+
+    <script
+      async
+      defer
+      src="https://maps.googleapis.com/maps/api/js?key={{ google_api_key }}&libraries=places&callback=initMap"
+    ></script>
+  </body>
+</html>
